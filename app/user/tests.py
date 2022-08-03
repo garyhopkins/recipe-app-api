@@ -1,9 +1,12 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from decimal import Decimal
 
 from rest_framework.test import APIClient
 from rest_framework import status
+
+from core import models
 
 CREATE_USER_URL = reverse("user:create")
 TOKEN_URL = reverse("user:token")
@@ -100,11 +103,13 @@ class PublicUserApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_retrieve_user_unauthorized(self):
-        """Check that auth is required and enforced for the me endpoint"""
+        """Test authentication is required for users"""
 
         response = self.client.get(ME_URL)
 
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(
+            response.status_code, status.HTTP_401_UNAUTHORIZED, response.content
+        )
 
 
 class PrivateUserApiTests(TestCase):
@@ -147,4 +152,23 @@ class PrivateUserApiTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.name, payload["name"])
         self.assertTrue(self.user.check_password(payload["password"]))
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_create_recipe(self):
+        """Test creating recipe is successful"""
+        user = get_user_model().objects.create_user(
+            "test2@example.com",
+            "testpass123",
+        )
+        recipe = models.Recipe.objects.create(
+            user=user,
+            title="Sample recipe name",
+            time_minutes=5,
+            price=Decimal("5.50"),
+            description="Sample recipe description",
+        )
+
+        self.assertEqual(
+            str(recipe),
+            recipe.title,
+        )
